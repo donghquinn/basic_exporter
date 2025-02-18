@@ -3,6 +3,10 @@
 * My purpose of this exporter is for fast, ligth, and stable exporter.
 * It provides System and Network metrics so far. Planning to add more functions and give users more options for choosing what they want.
 
+## Metrics
+* It's available to read metrics by :8080/metrics
+    * The port is fixed with 8080
+
 ## System
 * Memory
     * Total Physical Memroy in bytes
