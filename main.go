@@ -132,6 +132,6 @@ func main() {
 
 	// /metrics endpoint 노출
 	http.Handle("/metrics", promhttp.Handler())
-	log.Println("Exporter listening on :8080/metrics")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Println("Exporter listening on :9468/metrics")
+	log.Fatal(http.ListenAndServe(":9468", nil))
 }

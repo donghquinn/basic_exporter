@@ -4,8 +4,8 @@
 * It provides System and Network metrics so far. Planning to add more functions and give users more options for choosing what they want.
 
 ## Metrics
-* It's available to read metrics by :8080/metrics
-    * The port is fixed with 8080
+* It's available to read metrics by :9468/metrics
+    * The port is fixed with 9468
 
 ## System
 * Memory
