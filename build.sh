@@ -1,0 +1,1 @@
+GOOS=linux GOARCH=amd64 go build -o network_status_exporter main.go

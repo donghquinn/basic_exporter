@@ -3,8 +3,11 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
+	"strconv"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
@@ -20,7 +23,7 @@ import (
 var prevNetRecv, prevNetSent uint64
 
 // 시스템 메트릭 업데이트 함수
-func updateMetrics() {
+func updateMetrics(intervalSeconds int) {
 	// 메모리 정보 수집
 	vmStat, err := mem.VirtualMemory()
 	if err != nil {
@@ -58,17 +61,23 @@ func updateMetrics() {
 		currentRecv := netCounters[0].BytesRecv
 		currentSent := netCounters[0].BytesSent
 
-		// 최초 호출인 경우 이전값이 없으므로 바로 설정
+		// 첫 실행 시, 누적 값만 등록 (대역폭 계산은 이후부터)
 		if prevNetRecv == 0 && prevNetSent == 0 {
 			network.NetRecv.Add(float64(currentRecv))
 			network.NetSent.Add(float64(currentSent))
 		} else {
-			// 누적 값의 증가분만 추가 (Prometheus Counter는 감소 불가)
+			// 누적 값 증가분 계산
 			if currentRecv >= prevNetRecv {
-				network.NetRecv.Add(float64(currentRecv - prevNetRecv))
+				deltaRecv := currentRecv - prevNetRecv
+				network.NetRecv.Add(float64(deltaRecv))
+				// 초당 수신 바이트 수 (간단히 interval로 나눔)
+				network.NetworkRecvBps.Set(float64(deltaRecv) / float64(intervalSeconds))
 			}
 			if currentSent >= prevNetSent {
-				network.NetSent.Add(float64(currentSent - prevNetSent))
+				deltaSent := currentSent - prevNetSent
+				network.NetSent.Add(float64(deltaSent))
+				// 초당 전송 바이트 수
+				network.NetworkSentBps.Set(float64(deltaSent) / float64(intervalSeconds))
 			}
 		}
 		prevNetRecv = currentRecv
@@ -76,17 +85,28 @@ func updateMetrics() {
 	}
 }
 
-func recordMetrics() {
+func recordMetrics(interval time.Duration) {
 	// 주기적으로 메트릭 업데이트
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(interval * time.Second)
 	go func() {
 		for range ticker.C {
-			updateMetrics()
+			updateMetrics(int(interval))
 		}
 	}()
 }
 
 func main() {
+	if loadErr := godotenv.Load(".env"); loadErr != nil {
+		log.Fatalf("Error loading .env file: %v", loadErr)
+	}
+
+	convInt, convErr := strconv.Atoi(os.Getenv("METRICS_INTERVAL"))
+	if convErr != nil {
+		log.Fatalf("Error converting METRICS_INTERVAL to integer: %v", convErr)
+	}
+
+	interval := time.Duration(convInt)
+
 	// Memory Metrics
 	prometheus.MustRegister(system.MemoryTotal)
 	prometheus.MustRegister(system.MemoryUsed)
@@ -104,9 +124,11 @@ func main() {
 	// Network Metrics
 	prometheus.MustRegister(network.NetRecv)
 	prometheus.MustRegister(network.NetSent)
+	prometheus.MustRegister(network.NetworkRecvBps)
+	prometheus.MustRegister(network.NetworkSentBps)
 
 	// 메트릭 업데이트 시작
-	recordMetrics()
+	recordMetrics(interval)
 
 	// /metrics endpoint 노출
 	http.Handle("/metrics", promhttp.Handler())
