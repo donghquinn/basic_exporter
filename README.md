@@ -1,10 +1,19 @@
 # Network Exporter
 
-## Metrics
-* 
+## System
+* Memory
+    * Total Physical Memroy in bytes
+    * Used memory in bytes
+    * Available Memory in bytes
+    * Memory usage in bytes
+* Load Average
+    * 1, 5, 15
+* CPU Usage
+    * Total CPU Usage Percentage
 
 ## Networks
-* 
+* Network Total Received & Transmitted bytes
+* Current Network Received & Transmitted Bandwidth in bytes per second.
 
 ## Build and Deploy
 ### Docker and Docker compose
