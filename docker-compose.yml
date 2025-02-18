@@ -5,7 +5,11 @@ services:
       dockerfile: Dockerfile
     container_name: monitoring
     restart: always
-    network_mode: host
     ports:
       - 9468:9468
-
+    env_file:
+      - .env
+    volumes:
+      - ./.env:/home/node/.env
+      - /proc:/host_proc:ro
+      - /sys:/host_sys:ro
