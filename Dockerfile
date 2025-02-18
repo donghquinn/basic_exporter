@@ -24,6 +24,6 @@ WORKDIR /home/node
 
 COPY --from=builder /app/network_status_exporter ./network_status_exporter
 
-EXPOSE 8080
+EXPOSE 9468
 
 CMD [ "./network_status_exporter" ]

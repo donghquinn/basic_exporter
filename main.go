@@ -133,5 +133,6 @@ func main() {
 	// /metrics endpoint 노출
 	http.Handle("/metrics", promhttp.Handler())
 	log.Println("Exporter listening on :9468/metrics")
+	log.Printf("Metrics update interval: %d seconds", interval)
 	log.Fatal(http.ListenAndServe(":9468", nil))
 }
