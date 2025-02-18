@@ -1,6 +1,6 @@
 # Basic Exporter
 * It's very simple but basic exporter for monitoring your own machine.
-* My purpose of this exporter is for fast, ligth, and stable exporter.
+* My purpose of this exporter is building fast, ligth, and stable exporter.
 * It provides System and Network metrics so far. Planning to add more functions and give users more options for choosing what they want.
 
 ## Metrics
