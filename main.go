@@ -15,8 +15,8 @@ import (
 	"github.com/shirou/gopsutil/v4/load"
 	"github.com/shirou/gopsutil/v4/mem"
 	psnet "github.com/shirou/gopsutil/v4/net"
-	"org.donghyuns.com/exporter/network/network"
-	"org.donghyuns.com/exporter/network/system"
+	"org.donghyuns.com/exporter/basic/network"
+	"org.donghyuns.com/exporter/basic/system"
 )
 
 // 네트워크 증분 계산을 위한 이전 값 저장

@@ -1,4 +1,4 @@
-module org.donghyuns.com/exporter/network
+module org.donghyuns.com/exporter/basic
 
 go 1.24.0
 
