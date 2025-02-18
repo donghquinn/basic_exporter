@@ -87,15 +87,21 @@ func recordMetrics() {
 }
 
 func main() {
-	// Prometheus에 메트릭 등록
+	// Memory Metrics
 	prometheus.MustRegister(system.MemoryTotal)
 	prometheus.MustRegister(system.MemoryUsed)
 	prometheus.MustRegister(system.MemoryAvailable)
 	prometheus.MustRegister(system.MemoryUsagePercent)
+
+	// CPU Metrics
 	prometheus.MustRegister(system.CpuUsage)
+
+	// Load Metrics
 	prometheus.MustRegister(system.Load1)
 	prometheus.MustRegister(system.Load5)
 	prometheus.MustRegister(system.Load15)
+
+	// Network Metrics
 	prometheus.MustRegister(network.NetRecv)
 	prometheus.MustRegister(network.NetSent)
 
