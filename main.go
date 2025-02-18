@@ -7,54 +7,73 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/load"
+	"github.com/shirou/gopsutil/v4/mem"
 	psnet "github.com/shirou/gopsutil/v4/net"
+	"org.donghyuns.com/exporter/network/network"
+	"org.donghyuns.com/exporter/network/system"
 )
 
-// 누적 네트워크 바이트 메트릭 (카운터)
-var (
-	netRecv = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "network_receive_bytes_total",
-		Help: "Total number of bytes received on all network interfaces",
-	})
-	netSent = prometheus.NewCounter(prometheus.CounterOpts{
-		Name: "network_transmit_bytes_total",
-		Help: "Total number of bytes sent on all network interfaces",
-	})
-)
+// 네트워크 증분 계산을 위한 이전 값 저장
+var prevNetRecv, prevNetSent uint64
 
-// 이전 값들을 저장해서 증분값을 계산할 경우 필요하면 전역변수 사용
-var prevRecv, prevSent uint64
-
+// 시스템 메트릭 업데이트 함수
 func updateMetrics() {
-	// IOCounters(false): 모든 인터페이스를 합산한 결과 반환
-	counters, err := psnet.IOCounters(false)
-	if err != nil || len(counters) == 0 {
-		log.Printf("Failed to get network counters: %v", err)
-		return
-	}
-
-	currentRecv := counters[0].BytesRecv
-	currentSent := counters[0].BytesSent
-
-	// Prometheus의 Counter는 직접 감소시키거나 설정할 수 없으므로,
-	// 최초 값만 세팅하는 경우엔 아래처럼 초기값을 기록하고,
-	// 이후에는 누적 증가분만 Add() 해주면 됩니다.
-	// (혹은, 메트릭을 Gauge로 등록하고 직접 설정할 수도 있습니다.)
-	if prevRecv == 0 && prevSent == 0 {
-		// 초기값 설정 (이미 이전 누적 값이 있는 경우 Prometheus에서는 rate()로 계산 가능)
-		netRecv.Add(float64(currentRecv))
-		netSent.Add(float64(currentSent))
+	// 메모리 정보 수집
+	vmStat, err := mem.VirtualMemory()
+	if err != nil {
+		log.Printf("Failed to get memory info: %v", err)
 	} else {
-		// 누적 값의 증가량을 더함
-		if currentRecv >= prevRecv {
-			netRecv.Add(float64(currentRecv - prevRecv))
-		}
-		if currentSent >= prevSent {
-			netSent.Add(float64(currentSent - prevSent))
-		}
+		system.MemoryTotal.Set(float64(vmStat.Total))
+		system.MemoryUsed.Set(float64(vmStat.Used))
+		system.MemoryAvailable.Set(float64(vmStat.Available))
+		system.MemoryUsagePercent.Set(vmStat.UsedPercent)
 	}
-	prevRecv = currentRecv
-	prevSent = currentSent
+
+	// CPU 사용률 (0초 간격은 즉시 반환하므로, 참고용으로 사용)
+	cpuPercents, err := cpu.Percent(0, false)
+	if err != nil {
+		log.Printf("Failed to get CPU percent: %v", err)
+	} else if len(cpuPercents) > 0 {
+		system.CpuUsage.Set(cpuPercents[0])
+	}
+
+	// Load Average 수집
+	loadStat, err := load.Avg()
+	if err != nil {
+		log.Printf("Failed to get load average: %v", err)
+	} else {
+		system.Load1.Set(loadStat.Load1)
+		system.Load5.Set(loadStat.Load5)
+		system.Load15.Set(loadStat.Load15)
+	}
+
+	// 네트워크 정보 수집 (모든 인터페이스의 합산)
+	netCounters, err := psnet.IOCounters(false)
+	if err != nil || len(netCounters) == 0 {
+		log.Printf("Failed to get network counters: %v", err)
+	} else {
+		currentRecv := netCounters[0].BytesRecv
+		currentSent := netCounters[0].BytesSent
+
+		// 최초 호출인 경우 이전값이 없으므로 바로 설정
+		if prevNetRecv == 0 && prevNetSent == 0 {
+			network.NetRecv.Add(float64(currentRecv))
+			network.NetSent.Add(float64(currentSent))
+		} else {
+			// 누적 값의 증가분만 추가 (Prometheus Counter는 감소 불가)
+			if currentRecv >= prevNetRecv {
+				network.NetRecv.Add(float64(currentRecv - prevNetRecv))
+			}
+			if currentSent >= prevNetSent {
+				network.NetSent.Add(float64(currentSent - prevNetSent))
+			}
+		}
+		prevNetRecv = currentRecv
+		prevNetSent = currentSent
+	}
 }
 
 func recordMetrics() {
@@ -69,8 +88,16 @@ func recordMetrics() {
 
 func main() {
 	// Prometheus에 메트릭 등록
-	prometheus.MustRegister(netRecv)
-	prometheus.MustRegister(netSent)
+	prometheus.MustRegister(system.MemoryTotal)
+	prometheus.MustRegister(system.MemoryUsed)
+	prometheus.MustRegister(system.MemoryAvailable)
+	prometheus.MustRegister(system.MemoryUsagePercent)
+	prometheus.MustRegister(system.CpuUsage)
+	prometheus.MustRegister(system.Load1)
+	prometheus.MustRegister(system.Load5)
+	prometheus.MustRegister(system.Load15)
+	prometheus.MustRegister(network.NetRecv)
+	prometheus.MustRegister(network.NetSent)
 
 	// 메트릭 업데이트 시작
 	recordMetrics()
